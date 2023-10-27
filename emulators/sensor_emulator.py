@@ -13,6 +13,7 @@ def main(server_ip, server_port, sensor_id, frequency):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((server_ip, server_port))
         while True:
+            print("enviando nova msg...")
             value = random.uniform(-100, 100)
             timestamp = datetime.now().isoformat()  # Generate current timestamp
             message = f"LOG|{sensor_id}|{timestamp}|{value}\r\n"
