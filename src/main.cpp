@@ -4,8 +4,22 @@
 #include <utility>
 #include <boost/asio.hpp>
 
+#define LOG 1
+#define GET 2
+#define ERROR 3
+#define RESPONSE 4
+
 using boost::asio::ip::tcp;
 using namespace std;
+
+struct message_t
+{
+  int type;
+  string content;
+  string datetime;
+  string sensor_id;
+  string reading;
+};
 
 class session
   : public std::enable_shared_from_this<session>
@@ -18,13 +32,13 @@ public:
 
   void start()
   {
-    read_message();
+    receive_message();
   }
 
 private:
-  void read_message()
+  void receive_message()
   {
-    cout<<"[read_message] fofinha"<<endl;
+    cout<<"[receive_message]"<<endl;
     auto self(shared_from_this());
     boost::asio::async_read_until(socket_, buffer_, "\r\n",
         [this, self](boost::system::error_code ec, std::size_t length)
@@ -34,12 +48,30 @@ private:
             std::istream is(&buffer_);
             std::string message(std::istreambuf_iterator<char>(is), {});
             std::cout << "Received: " << message << std::endl;
-            write_message(message);
+            message_t msg = discoverSender(message);
+            
+            switch(msg.type)
+            {
+              case LOG:
+                cout<<"[receive_message] LOG"<<endl;
+                break;
+              case GET:
+                cout<<"[receive_message] GET"<<endl;
+                break;
+              case ERROR:
+                cout<<"[receive_message] ERROR"<<endl;
+                break;
+              default:
+                cout<<"[receive_message] ERROR"<<endl;
+                break;
+            }
+
+            response_message(message);
           }
         });
   }
 
-  void write_message(const std::string& message)
+  void response_message(const std::string& message)
   {
     auto self(shared_from_this());
     boost::asio::async_write(socket_, boost::asio::buffer(message),
@@ -47,9 +79,29 @@ private:
         {
           if (!ec)
           {
-            read_message();
+            receive_message();
           }
         });
+  }
+
+  message_t discoverSender(string message){
+    message_t msg;
+    if(message.find("LOG")){
+      //LOG|SENSOR_ID|DATA_HORA|LEITURA\r\n
+      msg.type = LOG;
+      msg.content = message;
+      msg.sensor_id = message.substr(message.find("|")+1, message.find("|", message.find("|")+1));
+      msg.datetime = message.substr(message.find("|")+1, message.find("|", message.find("|")+1));
+    }
+    
+    if(message.find("GET"))
+      return 2;
+    
+    if(message.find("ERROR"))
+      return 3;
+    
+    else
+      return 0;
   }
 
   tcp::socket socket_;
