@@ -4,6 +4,8 @@
 #include <utility>
 #include <boost/asio.hpp>
 
+#include "../include/sensorFile.hpp"
+
 #define LOG 1
 #define GET 2
 #define ERROR 3
@@ -11,15 +13,6 @@
 
 using boost::asio::ip::tcp;
 using namespace std;
-
-struct message_t
-{
-  int type;
-  string content;
-  string datetime;
-  string sensor_id;
-  string reading;
-};
 
 class session : public std::enable_shared_from_this<session>
 {
@@ -37,18 +30,30 @@ public:
 			{
 				if (!ec)
 				{
-					std::istream is(&buffer_);
-					std::string message(std::istreambuf_iterator<char>(is), {});
-					std::cout << "Received: " << message << std::endl;
+					istream is(&buffer_);
+					string message(istreambuf_iterator<char>(is), {});
+					cout << "Received: " << message << endl;
 					message_t msg = discoverSender(message);
+					Sensor_File sensor_file;
+					logRecord_t rec_log = {};
+					logRecord_t rec_get[msg.number_records] = {};
+					int number_returned  = 0;
+					string response = "";
 
 					switch (msg.type)
 					{
 						case LOG:
 							cout << "[receive_message] LOG" << endl;
+							rec_log = sensor_file.message_to_log_record(msg);
+							if(sensor_file.write_file(&rec_log))
+								cout << "[receive_message] ERROR" << endl;
+							cout << "[receive_message] mensagem de Log escrita no arquivo" << endl;
 							break;
 						case GET:
 							cout << "[receive_message] GET" << endl;
+							number_returned  = sensor_file.read_file(msg.number_records, msg.sensor_id, rec_get);
+							response = sensor_file.createResponse(rec_get, number_returned);
+							response_message(response);
 							break;
 						case ERROR:
 							cout << "[receive_message] ERROR" << endl;
@@ -58,7 +63,7 @@ public:
 							break;
 					}
 
-					response_message(message);
+					
 				}
 			});
 	}
@@ -81,25 +86,22 @@ public:
 		message_t msg;
 		if (message.find("LOG"))
 		{
-			// LOG|SENSOR_ID|DATA_HORA|LEITURA\r\n
 			msg.type = LOG;
-			msg.content = message;
-			//   msg.sensor_id = message.substr(message.find("|") + 1, message.find("|", message.find("|") + 1));
-			//   msg.datetime = message.substr(message.find("|") + 1, message.find("|", message.find("|") + 1));
+			sprintf("LOG|%s|%s|%d\r\n", msg.sensor_id, msg.datetime, msg.reading);
 			return msg;
     	}
 
 		if (message.find("GET"))
 		{
 			msg.type = GET;
-			msg.content = message;
+			sprintf("GET|%s|%d\r\n", msg.sensor_id, msg.number_records);
 			return msg;
 		}
 
 		if (message.find("ERROR"))
 		{
 			msg.type = ERROR;
-			msg.content = message;
+			sprintf("ERROR|%d\r\n", msg.sensor_id);
 			return msg;
 		}
 	}

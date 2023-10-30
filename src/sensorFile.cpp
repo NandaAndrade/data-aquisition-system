@@ -23,85 +23,33 @@ string Sensor_File::time_t_to_string(time_t time) {
     return ss.str();
 }
 
-logRecord Sensor_File::message_to_log_record(const message_t& msg) {
-	logRecord log_record;
+logRecord_t Sensor_File::message_to_log_record(const message_t& msg) {
+	logRecord_t log_record;
 
 	strcpy(log_record.sensor_id, msg.sensor_id);
 	log_record.timestamp = string_to_time_t(msg.datetime);
-	log_record.value = stod(msg.reading);
+	log_record.value = msg.reading;
 
 	return log_record;
 }
 
-// int main()
-// {
-// 	// Abre o arquivo para leitura e escrita em modo binário e coloca o apontador do arquivo
-// 	// apontando para o fim de arquivo
-// 	// std::fstream file(".dat", std::fstream::out | std::fstream::in | std::fstream::binary | std::fstream::app);
-// 	// Caso não ocorram erros na abertura do arquivo
-// 	if (file.is_open())
-// 	{
-// 		// Imprime a posição atual do apontador do arquivo (representa o tamanho do arquivo)
-// 		int file_size = file.tellg();
+string Sensor_File::createResponse(logRecord_t *logRec, int number_records) {
+	string response = to_string(number_records);
+	for (int i = 0; i < number_records; i++) {
+		response += ";" + time_t_to_string(logRec[i].timestamp) + "|" + to_string(logRec[i].value);
+	}
+	response += "\r\n";
+	return response;
+}
 
-// 		// Recupera o número de registros presentes no arquivo
-// 		int n = file_size / sizeof(message_t);
-// 		std::cout << "Num records: " << n << " (file size: " << file_size << " bytes)" << std::endl;
 
-// 		// Escreve 10 registros no arquivo
-// 		std::cout << "Writing 10 more records..." << std::endl;
-// 		int id = n + 1;
-// 		for (unsigned i = 0; i < 10; ++i)
-// 		{
-// 			message_t rec;
-// 			rec.id = id++;
-// 			gen_random_name(rec.name);
-// 			gen_random_phone(rec.phone);
-// 			file.write((char *)&rec, sizeof(message_t));
-// 		}
-
-// 		// Imprime a posição atual do apontador do arquivo (representa o tamanho do arquivo)
-// 		file_size = file.tellg();
-// 		// Recupera o número de registros presentes no arquivo
-// 		n = file_size / sizeof(message_t);
-// 		std::cout << "Num records: " << n << " (file size: " << file_size << " bytes)" << std::endl;
-
-// 		bool id_ok = false;
-// 		while (!id_ok)
-// 		{
-// 			std::cout << "Id: ";
-// 			std::cin >> id;
-// 			if (id > n)
-// 				std::cout << "Invalid id" << std::endl;
-// 			else
-// 				id_ok = true;
-// 		}
-// 		file.seekp((id - 1) * sizeof(message_t), std::ios_base::beg);
-
-// 		// Le o registro selecionado
-// 		message_t rec;
-// 		file.read((char *)&rec, sizeof(message_t));
-
-// 		// Imprime o registro
-// 		std::cout << "Id: " << rec.id << " - Name: " << rec.name << " - Phone: " << rec.phone << std::endl;
-
-// 		// Fecha o arquivo
-// 		file.close();
-// 	}
-// 	else
-// 	{
-// 		std::cout << "Error opening file!" << std::endl;
-// 	}
-// 	return (0);
-// }
-
-int Sensor_File::write_file( logRecord *logRecord)
+int Sensor_File::write_file( logRecord_t *logRecord_t)
 {
-	string file_name = strcat(logRecord->sensor_id, ".dat");
+	string file_name = strcat(logRecord_t->sensor_id, ".dat");
 	std::fstream file(file_name, std::fstream::out | std::fstream::in | std::fstream::binary | std::fstream::app);
 	if (file.is_open())
 	{
-		file << logRecord << endl;
+		file << logRecord_t << endl;
 		// file.write((char *)&msg->content, );
 		file.close();
 		return 0;
@@ -113,34 +61,34 @@ int Sensor_File::write_file( logRecord *logRecord)
 	return 1;
 }
 
-logRecord *Sensor_File::read_file(int number_records, char *sensor_id)
+int Sensor_File::read_file(int number_records, char *sensor_id, logRecord_t records[])
 {
 	string file_name = strcat(sensor_id, ".dat");
 	std::fstream file(file_name, std::fstream::out | std::fstream::in | std::fstream::binary | std::fstream::app);
 	if (file.is_open())
 	{
-		logRecord *records = new logRecord[number_records];
+		 
 		file.seekg(0, std::ios::end); // posiciona o apontador no final do arquivo
 
-		for (int i = 0; i < number_records; i++)
-		{
-			//getline(file, registers[i]);
-			file.read((char *)&records[i], sizeof(logRecord));
+		int i = 0;
 
+		while(file.read((char *)&records[i], sizeof(logRecord_t) && i < number_records)){
 			cout<<"[read_file] sensor_id: " << records[i].sensor_id
 				<<", timestamp: " << time_t_to_string(records[i].timestamp)
 				<<", value: " << records[i].value<<endl;
 
 			file.seekg(-1 * (sizeof(message_t)), std::ios::cur);
-			
+			i++;
 		}
+
+		cout<<"[read_file] number_returned: " << i <<endl;
+
 		file.close();
+		return i;
 	}
 	else
 	{
 		std::cout << "Error opening file!" << std::endl;
 		return;
 	}
-	
-	file.close();
 }

@@ -13,6 +13,7 @@ find_package(Threads REQUIRED)
 find_package(Boost 1.65.1 REQUIRED COMPONENTS system)
 
 # include directories
+include_directories(${workspaces/data-aquisition-system/include} sensorFile)
 include_directories(${Boost_INCLUDE_DIRS} src)
 
 # target executable and its source files
