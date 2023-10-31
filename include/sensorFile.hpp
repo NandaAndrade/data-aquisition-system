@@ -67,29 +67,50 @@ class Sensor_File
 			}
 			return 1;
 		};
+
 		int read_file(int number_records, char *sensor_id, logRecord_t records[]){
 			string file_name = strcat(sensor_id, ".dat");
 			std::fstream file(file_name, std::fstream::out | std::fstream::in | std::fstream::binary | std::fstream::app);
 			if (file.is_open())
 			{
-				
+				// Imprime a posição atual do apontador do arquivo (representa o tamanho do arquivo)
 				file.seekg(0, std::ios::end); // posiciona o apontador no final do arquivo
+				int file_size = file.tellg();
+				cout<<"[read_file] file_size: " << file_size <<endl;
 
-				int i = 0;
+				// Recupera o número de registros presentes no arquivo
+				int n = file_size/sizeof(logRecord_t);
+				std::cout << "Num records: " << n << " (file size: " << file_size << " bytes)" << std::endl;
 
-				while(file.read((char *)&records[i], sizeof(logRecord_t) && i < number_records)){
-					cout<<"[read_file] sensor_id: " << records[i].sensor_id
-						<<", timestamp: " << time_t_to_string(records[i].timestamp)
-						<<", value: " << records[i].value<<endl;
+				
+				//file.seekg(0, std::ios::end); // posiciona o apontador no final do arquivo
 
-					file.seekg(-1 * (sizeof(message_t)), std::ios::cur);
-					i++;
+				if(n < number_records)
+					number_records = n;
+				n = number_records;
+
+				cout<<"[read_file] number_records: " << number_records <<endl;
+				bool read = true;
+
+				while( n > 0 ){
+					file.seekp((n-1)*sizeof(logRecord_t), std::ios_base::beg);
+
+					file.read((char *)&records[n], sizeof(logRecord_t));
+
+					cout<<"[read_file] records[i].sensor_id: " << records[n].sensor_id <<endl;
+
+					cout<<"[read_file] sensor_id: " << records[n].sensor_id
+						<<", timestamp: " << time_t_to_string(records[n].timestamp)
+						<<", value: " << records[n].value<<endl;
+
+					//file.seekg(-1 * (sizeof(logRecord_t)), std::ios::cur);
+					n--;
 				}
 
-				cout<<"[read_file] number_returned: " << i <<endl;
+				cout<<"[read_file] number_returned: " << n <<endl;
 
 				file.close();
-				return i;
+				return n;
 			}
 			else
 			{

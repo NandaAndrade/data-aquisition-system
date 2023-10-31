@@ -19,8 +19,8 @@ struct logRecord_t
 
 struct message_t{
     int type;
-	char* datetime;
-	char* sensor_id;
+	char datetime[100];
+	char sensor_id[32];
 	int number_records;
 	double reading;
 };
